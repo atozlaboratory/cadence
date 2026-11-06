@@ -26,28 +26,45 @@
 let port;
 let writer;
 
+// Connect Arduino
 async function connectArduino() {
-
+  try {
     port = await navigator.serial.requestPort();
 
     await port.open({ baudRate: 9600 });
 
     writer = port.writable.getWriter();
 
+    // Initial LED OFF
+    await sendCommand("O");
+
     console.log("Arduino connected!");
+
+  } catch (error) {
+    console.error("Arduino connection failed:", error);
+  }
 }
 
+// Send command to Arduino
 async function sendCommand(command) {
+  if (!writer) {
+    console.log("Arduino is not connected.");
+    return;
+  }
 
-    if (!writer) return;
+  const data = new TextEncoder().encode(command);
 
-    const data = new TextEncoder().encode(command);
-
-    await writer.write(data);
+  await writer.write(data);
 }
 
-function playSong() {
-    sendCommand("P");
+// Play: Blink twice per second
+async function playSong() {
+  await sendCommand("P");
+}
+
+// Stop: LED continuously ON
+async function stopSong() {
+  await sendCommand("S");
 }
 
 function stopSong() {
