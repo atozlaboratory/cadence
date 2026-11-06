@@ -1,0 +1,60 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cadence Arduino Test</title>
+</head>
+
+<body>
+
+<h2>Cadence Arduino LED Test</h2>
+
+<button onclick="connectArduino()">
+    Connect Arduino
+</button>
+
+<button onclick="playSong()">
+    Play
+</button>
+
+<button onclick="stopSong()">
+    Stop
+</button>
+
+<script>
+
+let port;
+let writer;
+
+async function connectArduino() {
+
+    port = await navigator.serial.requestPort();
+
+    await port.open({ baudRate: 9600 });
+
+    writer = port.writable.getWriter();
+
+    console.log("Arduino connected!");
+}
+
+async function sendCommand(command) {
+
+    if (!writer) return;
+
+    const data = new TextEncoder().encode(command);
+
+    await writer.write(data);
+}
+
+function playSong() {
+    sendCommand("P");
+}
+
+function stopSong() {
+    sendCommand("S");
+}
+
+</script>
+
+</body>
+</html>
