@@ -294,14 +294,55 @@
     });
   }
 
+// ---------- ESP32 LED connection ----------
+
+var ESP32_BASE_URL = "http://10.203.128.230";
+
+function sendESP32Command(command) {
+
+  var url = ESP32_BASE_URL + "/" + command;
+
+  fetch(url, {
+    method: "POST",
+    mode: "cors",
+    targetAddressSpace: "local"
+  })
+
+  .then(function(response) {
+
+    if (!response.ok) {
+      throw new Error("ESP32 command failed");
+    }
+
+    console.log("ESP32 command sent:", command);
+
+  })
+
+  .catch(function(error) {
+
+    console.warn("ESP32 connection error:", error);
+
+  });
+
+}
+
   // ---------- sing ----------
   var cur=0,t=0,curSong=0,progId=null,elapsedMs=0,totalMs=0,audioOn=true,finishing=false;
   function chooseSong(i){curSong=i;go('sing');}
   function setTimer(){var m=Math.floor(t/60),s=(t%60).toString();if(s.length<2)s='0'+s;document.getElementById('timer').textContent=m+':'+s;}
   function setBar(p){document.getElementById('bar').style.width=p+'%';}
+  //function startSing(){
+  //  var s=SONGS[curSong];finishing=false;lastBlob=null;
+  //  document.getElementById('singTitle').textContent=s.t;
+
   function startSing(){
-    var s=SONGS[curSong];finishing=false;lastBlob=null;
-    document.getElementById('singTitle').textContent=s.t;
+
+  var s=SONGS[curSong];finishing=false;lastBlob=null;
+
+  // Start ESP32 LED blinking
+  sendESP32Command("play");
+
+  document.getElementById('singTitle').textContent=s.t;
     document.getElementById('micLine').innerHTML='&#127908; Your voice is recorded this session &middot; headphones give cleaner audio';
     var L=document.getElementById('lyrics');L.innerHTML='';
     s.lyrics.forEach(function(line,idx){var p=document.createElement('div');p.className='lyric'+(idx===0?' cur':'');p.textContent=line;L.appendChild(p);});
@@ -320,8 +361,29 @@
     },100);
   }
   function stopAudioTimers(){clearInterval(progId);Audio2.stop();}
-  function cancelSing(){finishing=true;stopAudioTimers();if(recorder&&recorder.state&&recorder.state!=='inactive'){try{recorder.onstop=null;recorder.stop();}catch(e){}}chunks=[];}
-  function finishSing(){
+  //function cancelSing(){finishing=true;stopAudioTimers();if(recorder&&recorder.state&&recorder.state!=='inactive'){try{recorder.onstop=null;recorder.stop();}catch(e){}}chunks=[];}
+
+function cancelSing(){
+
+  // Stop ESP32 LED blinking
+  sendESP32Command("stop");
+
+  finishing=true;
+  stopAudioTimers();
+
+  if(recorder&&recorder.state&&recorder.state!=='inactive'){
+    try{
+      recorder.onstop=null;
+      recorder.stop();
+    }catch(e){}
+  }
+
+  chunks=[];
+
+}
+
+  
+  /*function finishSing(){
     if(finishing)return;finishing=true;
     stopAudioTimers();
     streak=6;try{localStorage.setItem('cadence_streak',streak);}catch(e){}
@@ -331,6 +393,44 @@
     if(recorder&&recorder.state&&recorder.state!=='inactive'){try{recorder.stop();}catch(e){handleBlob(null);}}
     else{handleBlob(null);}
   }
+*/
+function finishSing(){
+
+  if(finishing)return;
+  finishing=true;
+
+  // Stop ESP32 LED blinking
+  sendESP32Command("stop");
+
+  stopAudioTimers();
+
+  streak=6;
+  try{
+    localStorage.setItem('cadence_streak',streak);
+  }catch(e){}
+
+  paintStreak(6,true);
+
+  go('result');
+
+  setResultStatus(micOK?'analyzing':'nomic');
+
+  if(recorder&&recorder.state&&recorder.state!=='inactive'){
+    try{
+      recorder.stop();
+    }catch(e){
+      handleBlob(null);
+    }
+  }
+
+  else{
+    handleBlob(null);
+  }
+
+}
+
+  
+  
   function onRecStop(){var type=(chunks[0]&&chunks[0].type)||'audio/webm';lastBlob=new Blob(chunks,{type:type});handleBlob(lastBlob);}
   function handleBlob(blob){
     if(!blob){setResultStatus(micOK?'error':'nomic');return;}
