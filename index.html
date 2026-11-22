@@ -298,6 +298,10 @@
 
 var ESP32_BASE_URL = "http://10.203.128.45";
 
+
+
+
+  
 function sendESP32Command(command) {
 
   var url = ESP32_BASE_URL + "/" + command;
@@ -326,6 +330,40 @@ function sendESP32Command(command) {
 
 }
 
+  // ---------- ESP32 physical song-list button ----------
+
+function checkSongListButton() {
+  fetch(ESP32_BASE_URL + "/button", {
+    method: "GET",
+    mode: "cors",
+    targetAddressSpace: "local"
+  })
+    .then(function(response) {
+      if (!response.ok) {
+        throw new Error("Button check failed");
+      }
+      return response.text();
+    })
+    .then(function(result) {
+      if (result.trim() === "1") {
+        // Avoid interrupting an active singing session.
+        var singingNow =
+          document.getElementById("sing").classList.contains("active");
+
+        if (!singingNow) {
+          go("songs");
+        }
+      }
+    })
+    .catch(function(error) {
+      console.warn("ESP32 button check error:", error);
+    });
+}
+
+// Check for a button press once per second.
+setInterval(checkSongListButton, 1000);
+
+  
   // ---------- sing ----------
   var cur=0,t=0,curSong=0,progId=null,elapsedMs=0,totalMs=0,audioOn=true,finishing=false;
   function chooseSong(i){curSong=i;go('sing');}
